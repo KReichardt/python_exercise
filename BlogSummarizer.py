@@ -5,11 +5,12 @@ from nltk.corpus import stopwords
 from string import punctuation
 from nltk.probability import FreqDist
 from heapq import nlargest
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 homePageUrl = "https://www.glanos.de/blog/"
 articles = []
-
+UrlTupel = namedtuple('UrlTupel', 'title link')
+ArticleTupel = namedtuple('ArticleTupel', 'title text')
 
 # Erstellen einer Liste von URLs zu allen Blogeinträgen, die auf einer Seite verlinkt sind, inkl. Titel:
 def getListOfUrl(url):
@@ -19,7 +20,7 @@ def getListOfUrl(url):
     for link in homeSoup.find_all("a"):
         title = link.get("title")
         if title:
-            resLink = (title, link.get("href"))
+            resLink = UrlTupel(title, link.get("href"))
             res.append(resLink)
 
     urlList = list(set(res))
@@ -31,13 +32,13 @@ def getTextFromUrl(urlList):
     articleList = list()
     for elem in urlList:
         fullArticle = []
-        page = urllib2.urlopen(elem[1]).read().decode('utf8', 'ignore')
+        page = urllib2.urlopen(elem.link).read().decode('utf8', 'ignore')
         soup = BeautifulSoup(page, 'lxml')
-        results = soup.find_all('p')
-        for result in results:
-            fullArticle.append(result.text)
+        paragraphs = soup.find_all('p')
+        for para in paragraphs:
+            fullArticle.append(para.text)
         article = "".join(fullArticle)
-        articleWithTitle = (elem[0], article)
+        articleWithTitle = ArticleTupel(elem.title, article)
         articleList.append(articleWithTitle)
     return articleList
 
@@ -47,17 +48,14 @@ articleList = getTextFromUrl(urlList)
 
 # Weiterverarbeitung der extrahierten Blogseiten
 
-ownStopWords = ["„", "“", "–",
-                "”"]  # eigene Stopwordliste mit Sonderzeichen, die nicht in der Liste der Bibliothek vorkamen
-stopwords = set(stopwords.words('german') + stopwords.words('english') + list(punctuation) + ownStopWords)
+ownStopWords = ["„", "“", "–", "”"]  # Eigene Liste mit Satzzeichen, die in importierter Liste fehlten
+stopwords = set(stopwords.words('german') + stopwords.words('english') + list(punctuation) + ownStopWords)  # Liste mit Stopwords auf Deutsch und Englisch und Satzzeichen
 
 # Zählen der Häufigkeit der Wörter in jedem Artikel
 for article in articleList:
-    title = article[0]
-    text = article[1]
-    sentences = sent_tokenize(text)
-    words = word_tokenize(text)
-    words = [word for word in words if word.lower() not in [stopword.lower() for stopword in stopwords]]
+    sentences = sent_tokenize(article.text)
+    words = word_tokenize(article.text)
+    words = [word for word in words if word.lower() not in [stopword.lower() for stopword in stopwords]]  # Stopwords und Satzzeichen sollen in Häufigkeitsliste ignoriert werden
     freq = FreqDist(words)
 
     # Ranking der Sätze durch Häufigkeit der darin enthaltenen Wörter
@@ -71,6 +69,6 @@ for article in articleList:
     sentencesNumber = nlargest(3, ranking, key=ranking.get)
     sentencesSorted = [sentences[i] for i in sorted(sentencesNumber)]
     summary = "".join(sentencesSorted)
-    print(title + ":")
+    print(article.title + ":")
     print(summary)
 

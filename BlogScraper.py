@@ -13,11 +13,14 @@ articles = []
 def getListOfUrl(url):
     homePage = urllib2.urlopen(url).read().decode('utf8', 'ignore')
     homeSoup = BeautifulSoup(homePage, 'lxml')
-    links = []
+    links = list()
 
     for link in homeSoup.find_all("a"):
         if link.get("title"):
             links.append(link.get("href"))
+    if not len(links):
+        print("No links found.")
+        exit()
     urlList = list(set(links))
     return urlList
 
@@ -45,9 +48,9 @@ article = "".join(articles)
 # Ausgabe der 10 Häufigsten Wörter in allen Blogartikeln
 
 words = word_tokenize(article)
-ownStopWords = ["„", "“", "–", "”"]
-stopwords = set(stopwords.words('german') + stopwords.words('english') + list(punctuation) + ownStopWords)
-words = [word for word in words if word.lower() not in [stopword.lower() for stopword in stopwords]]
+ownStopWords = ["„", "“", "–", "”"] # Eigene Liste mit Satzzeichen, die in importierter Liste fehlten
+stopwords = set(stopwords.words('german') + stopwords.words('english') + list(punctuation) + ownStopWords) # Liste mit Stopwords auf Deutsch und Englisch und Satzzeichen
+words = [word for word in words if word.lower() not in [stopword.lower() for stopword in stopwords]]    # Stopwords und Satzzeichen sollen in Häufigkeitsliste ignoriert werden
 freq = FreqDist(words)
 print(freq.most_common(10))
 
